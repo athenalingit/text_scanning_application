@@ -24,14 +24,3 @@ The pipeline for OCR: user takes picture -> frontend compresses image -> upload 
 
 Notes: 
 - horizontal vs vertical text
-
-However, the app may still keep a hidden scan history:
-
-Document
-  └── Chapter
-        └── Scan 1
-        └── Scan 2
-        └── Scan 3
-        └── Combined chapter text
-
-This allows the app to support features like undoing the last scan, retrying OCR, or reviewing the original scanned image.
