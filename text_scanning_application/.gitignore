@@ -34,9 +34,13 @@ yarn-error.log*
 .env*
 !.env.example
 
-# Google Cloud service account keys
+# Google Cloud service account keys and local credentials
 /credentials/
+**/credentials/
 google-cloud-key.json
+google-cloud-key.json.json
+*-key.json
+*.json.json
 
 # vercel
 .vercel
