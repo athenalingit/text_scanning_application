@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 
-type Chapter = {
-  id: string;
-  title: string;
-  text: string;
-};
+import ChapterSelector from "@/components/ChapterSelector";
+import Header from "@/components/Header";
+import ScanPanel from "@/components/ScanPanel";
+import TextEditorPanel from "@/components/TextEditorPanel";
+import { runExtraction } from "@/lib/ocr";
+import type { Chapter, ExtractionStatus } from "@/types";
 
 export default function Home() {
   const [documentTitle, setDocumentTitle] = useState("Untitled Document");
@@ -19,10 +20,11 @@ export default function Home() {
   ]);
 
   const [activeChapterId, setActiveChapterId] = useState("chapter-1");
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [ocrStatus, setOcrStatus] = useState<"idle" | "processing" | "done">(
-    "idle"
-  );
+  const [extractionStatus, setExtractionStatus] =
+    useState<ExtractionStatus>("idle");
+  const [extractionError, setExtractionError] = useState<string | null>(null);
 
   const activeChapter = chapters.find(
     (chapter) => chapter.id === activeChapterId
@@ -54,30 +56,37 @@ export default function Home() {
 
     if (!file) return;
 
-    const previewUrl = URL.createObjectURL(file);
-    setImagePreview(previewUrl);
-    setOcrStatus("idle");
+    setSelectedImage(file);
+    setImagePreview(URL.createObjectURL(file));
+    setExtractionStatus("idle");
+    setExtractionError(null);
   }
 
-  function processMockOCR() {
-    if (!imagePreview || !activeChapter) return;
+  async function handleRunExtraction() {
+    if (!selectedImage || !activeChapter) return;
 
-    setOcrStatus("processing");
+    setExtractionStatus("processing");
+    setExtractionError(null);
 
-    // This is fake OCR for now.
-    // Later, replace this with a real API call to Google Cloud Vision OCR.
-    setTimeout(() => {
-      const mockText =
-        "这是从图片中识别出来的中文文本。之后这里会显示真正的 OCR 结果。";
+    try {
+      const extractedText = await runExtraction(selectedImage);
 
       const updatedText = activeChapter.text
-        ? `${activeChapter.text}\n\n${mockText}`
-        : mockText;
+        ? `${activeChapter.text}\n\n${extractedText}`
+        : extractedText;
 
       updateActiveChapterText(updatedText);
-      setOcrStatus("done");
+      setExtractionStatus("done");
+      setSelectedImage(null);
       setImagePreview(null);
-    }, 1000);
+    } catch (error) {
+      setExtractionStatus("error");
+      setExtractionError(
+        error instanceof Error
+          ? error.message
+          : "Extraction failed. Please try again."
+      );
+    }
   }
 
   function exportDocument() {
@@ -97,121 +106,39 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-neutral-100 p-4 text-neutral-900">
-      <div className="mx-auto max-w-6xl">
-        {/* Header */}
-        <header className="mb-4 rounded-2xl bg-white p-4 shadow-sm">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-neutral-500">Text Scanning App</p>
-              <input
-                value={documentTitle}
-                onChange={(e) => setDocumentTitle(e.target.value)}
-                className="w-full border-none text-2xl font-bold outline-none"
+    <main className="min-h-screen bg-neutral-100 px-3 py-3 text-neutral-900 sm:p-4">
+      <div className="mx-auto max-w-6xl pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <Header
+          documentTitle={documentTitle}
+          onDocumentTitleChange={setDocumentTitle}
+          onExport={exportDocument}
+        />
+
+        <div className="grid gap-3 sm:gap-4 lg:grid-cols-[320px_1fr]">
+          <div className="space-y-3 sm:space-y-4">
+            <section className="rounded-2xl bg-white p-3 shadow-sm sm:p-4">
+              <ChapterSelector
+                chapters={chapters}
+                activeChapterId={activeChapterId}
+                onChapterChange={setActiveChapterId}
+                onAddChapter={addChapter}
               />
-            </div>
+            </section>
 
-            <button
-              onClick={exportDocument}
-              className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
-            >
-              Export TXT
-            </button>
+            <ScanPanel
+              imagePreview={imagePreview}
+              extractionStatus={extractionStatus}
+              errorMessage={extractionError}
+              onImageUpload={handleImageUpload}
+              onRunExtraction={handleRunExtraction}
+            />
           </div>
-        </header>
 
-        <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
-          {/* Left Panel */}
-          <section className="rounded-2xl bg-white p-4 shadow-sm">
-            <h2 className="mb-3 text-lg font-semibold">Scan</h2>
-
-            <label className="mb-3 block text-sm font-medium">
-              Current Chapter
-            </label>
-
-            <select
-              value={activeChapterId}
-              onChange={(e) => setActiveChapterId(e.target.value)}
-              className="mb-3 w-full rounded-xl border border-neutral-300 p-2"
-            >
-              {chapters.map((chapter) => (
-                <option key={chapter.id} value={chapter.id}>
-                  {chapter.title}
-                </option>
-              ))}
-            </select>
-
-            <button
-              onClick={addChapter}
-              className="mb-5 w-full rounded-xl border border-neutral-300 px-4 py-2 text-sm hover:bg-neutral-100"
-            >
-              + New Chapter
-            </button>
-
-            <div className="mb-4 rounded-xl border-2 border-dashed border-neutral-300 p-4 text-center">
-              {imagePreview ? (
-                <img
-                  src={imagePreview}
-                  alt="Preview"
-                  className="mx-auto max-h-64 rounded-lg object-contain"
-                />
-              ) : (
-                <p className="text-sm text-neutral-500">
-                  Upload or take a photo of a book page
-                </p>
-              )}
-            </div>
-
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleImageUpload}
-              className="mb-3 w-full text-sm"
-            />
-
-            <button
-              onClick={processMockOCR}
-              disabled={!imagePreview || ocrStatus === "processing"}
-              className="w-full rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-neutral-300"
-            >
-              {ocrStatus === "processing" ? "Processing..." : "Run OCR"}
-            </button>
-
-            {ocrStatus === "done" && (
-              <p className="mt-3 text-sm text-green-600">
-                Text added to chapter.
-              </p>
-            )}
-
-            <div className="mt-6 rounded-xl bg-neutral-100 p-3 text-sm text-neutral-600">
-              <p className="font-medium text-neutral-800">MVP behavior:</p>
-              <p>
-                Each scan adds OCR text to the selected chapter as one continuous
-                document.
-              </p>
-            </div>
-          </section>
-
-          {/* Right Panel */}
-          <section className="rounded-2xl bg-white p-4 shadow-sm">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">
-                {activeChapter?.title || "Chapter"}
-              </h2>
-
-              <p className="text-sm text-neutral-500">
-                {activeChapter?.text.length || 0} characters
-              </p>
-            </div>
-
-            <textarea
-              value={activeChapter?.text || ""}
-              onChange={(e) => updateActiveChapterText(e.target.value)}
-              placeholder="Scanned Chinese text will appear here..."
-              className="min-h-[600px] w-full resize-none rounded-xl border border-neutral-300 p-4 leading-8 outline-none focus:border-blue-500"
-            />
-          </section>
+          <TextEditorPanel
+            chapterTitle={activeChapter?.title || "Chapter"}
+            text={activeChapter?.text || ""}
+            onTextChange={updateActiveChapterText}
+          />
         </div>
       </div>
     </main>
