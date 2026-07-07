@@ -42,6 +42,9 @@ google-cloud-key.json.json
 *-key.json
 *.json.json
 
+# legacy nested app folder from old layout
+/text_scanning_application/
+
 # vercel
 .vercel
 
