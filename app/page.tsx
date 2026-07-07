@@ -40,6 +40,16 @@ export default function Home() {
     );
   }
 
+  function updateActiveChapterTitle(newTitle: string) {
+    setChapters((prev) =>
+      prev.map((chapter) =>
+        chapter.id === activeChapterId
+          ? { ...chapter, title: newTitle }
+          : chapter
+      )
+    );
+  }
+
   function addChapter() {
     const newChapter: Chapter = {
       id: `chapter-${chapters.length + 1}`,
@@ -137,6 +147,7 @@ export default function Home() {
           <TextEditorPanel
             chapterTitle={activeChapter?.title || "Chapter"}
             text={activeChapter?.text || ""}
+            onChapterTitleChange={updateActiveChapterTitle}
             onTextChange={updateActiveChapterText}
           />
         </div>
