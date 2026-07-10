@@ -8,11 +8,11 @@ import NavTabs from "@/components/NavTabs";
 import ScanPanel from "@/components/ScanPanel";
 import TextEditorPanel from "@/components/TextEditorPanel";
 import { useDocument } from "@/hooks/useDocument";
-import { runExtraction } from "@/lib/ocr";
+import { runGoogleVisionExtraction } from "@/lib/ocr";
 import { prepareImageForExtraction } from "@/lib/prepareImage";
 import type { ExtractionStatus } from "@/types";
 
-export default function Home() {
+export default function GoogleVisionPage() {
   const {
     documentTitle,
     setDocumentTitle,
@@ -53,7 +53,7 @@ export default function Home() {
 
     try {
       const preparedImage = await prepareImageForExtraction(selectedImage);
-      const extractedText = await runExtraction(preparedImage);
+      const extractedText = await runGoogleVisionExtraction(preparedImage);
 
       appendToActiveChapter(extractedText);
       setExtractionStatus("done");
@@ -96,6 +96,22 @@ export default function Home() {
             </section>
 
             <ScanPanel
+              title="Google Vision"
+              inputId="google-vision-upload"
+              cameraInputId="google-vision-camera"
+              uploadDescription="Upload or take a photo for Google Vision OCR"
+              runButtonLabel="Run Google Vision OCR"
+              processingLabel="Running Google Vision OCR..."
+              footer={
+                <div className="mt-6 rounded-xl bg-neutral-100 p-3 text-sm text-neutral-600">
+                  <p className="font-medium text-neutral-800">Google Vision OCR</p>
+                  <ul className="mt-2 list-inside list-disc space-y-1">
+                    <li>Dedicated OCR for printed text</li>
+                    <li>Chinese language hints enabled</li>
+                    <li>Requires GOOGLE_APPLICATION_CREDENTIALS</li>
+                  </ul>
+                </div>
+              }
               imagePreview={imagePreview}
               extractionStatus={extractionStatus}
               errorMessage={extractionError}

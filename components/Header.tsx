@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 type HeaderProps = {
   documentTitle: string;
   onDocumentTitleChange: (title: string) => void;

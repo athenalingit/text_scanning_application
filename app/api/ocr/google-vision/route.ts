@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { runExtractionPipeline } from "@/lib/extractPipeline";
+import { extractTextWithGoogleVision } from "@/lib/googleVisionOcr";
 
 export const runtime = "nodejs";
 
@@ -14,11 +14,18 @@ export async function POST(request: NextRequest) {
 
   try {
     const imageBuffer = Buffer.from(await image.arrayBuffer());
-    const text = await runExtractionPipeline(imageBuffer);
+    const text = await extractTextWithGoogleVision(imageBuffer);
+
+    if (!text) {
+      return NextResponse.json(
+        { error: "No text was detected in this image." },
+        { status: 422 }
+      );
+    }
 
     return NextResponse.json({ text });
   } catch (error) {
-    console.error("Extraction error:", error);
+    console.error("Google Vision extraction error:", error);
 
     const message =
       error instanceof Error ? error.message : "Extraction request failed";

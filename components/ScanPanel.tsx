@@ -5,6 +5,13 @@ import { useRef } from "react";
 import type { ExtractionStatus } from "@/types";
 
 type ScanPanelProps = {
+  title?: string;
+  inputId?: string;
+  cameraInputId?: string;
+  uploadDescription?: string;
+  runButtonLabel?: string;
+  processingLabel?: string;
+  footer?: React.ReactNode;
   imagePreview: string | null;
   extractionStatus: ExtractionStatus;
   errorMessage: string | null;
@@ -13,6 +20,13 @@ type ScanPanelProps = {
 };
 
 export default function ScanPanel({
+  title = "Scan",
+  inputId = "image-upload",
+  cameraInputId = "camera-upload",
+  uploadDescription = "Upload or take a photo of a book page",
+  runButtonLabel = "Run Extraction",
+  processingLabel = "Running extraction...",
+  footer,
   imagePreview,
   extractionStatus,
   errorMessage,
@@ -30,11 +44,11 @@ export default function ScanPanel({
 
   return (
     <section className="rounded-2xl bg-white p-3 shadow-sm sm:p-4">
-      <h2 className="mb-3 text-base font-semibold sm:text-lg">Scan</h2>
+      <h2 className="mb-3 text-base font-semibold sm:text-lg">{title}</h2>
 
       <input
         ref={fileInputRef}
-        id="image-upload"
+        id={inputId}
         type="file"
         accept="image/*"
         onChange={handleImageChange}
@@ -43,7 +57,7 @@ export default function ScanPanel({
 
       <input
         ref={cameraInputRef}
-        id="camera-upload"
+        id={cameraInputId}
         type="file"
         accept="image/*"
         capture="environment"
@@ -52,7 +66,7 @@ export default function ScanPanel({
       />
 
       <label
-        htmlFor="image-upload"
+        htmlFor={inputId}
         className="mb-4 block cursor-pointer rounded-xl border-2 border-dashed border-neutral-300 p-3 text-center transition active:border-blue-400 active:bg-blue-50 sm:p-4 sm:hover:border-blue-400 sm:hover:bg-blue-50"
       >
         {imagePreview ? (
@@ -66,9 +80,7 @@ export default function ScanPanel({
             <p className="text-sm font-medium text-neutral-700">
               Tap to choose an image
             </p>
-            <p className="mt-1 text-sm text-neutral-500">
-              Upload or take a photo of a book page
-            </p>
+            <p className="mt-1 text-sm text-neutral-500">{uploadDescription}</p>
           </div>
         )}
       </label>
@@ -97,11 +109,22 @@ export default function ScanPanel({
         disabled={!imagePreview || isProcessing}
         className="min-h-12 w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-medium text-white active:bg-blue-700 disabled:cursor-not-allowed disabled:bg-neutral-300 sm:py-2 sm:hover:bg-blue-700"
       >
-        {isProcessing ? "Running extraction..." : "Run Extraction"}
+        {isProcessing ? processingLabel : runButtonLabel}
       </button>
 
       {extractionStatus === "error" && errorMessage && (
         <p className="mt-3 text-sm leading-relaxed text-red-600">{errorMessage}</p>
+      )}
+
+      {footer ?? (
+        <div className="mt-6 rounded-xl bg-neutral-100 p-3 text-sm text-neutral-600">
+          <p className="font-medium text-neutral-800">Extraction pipeline</p>
+          <ul className="mt-2 list-inside list-disc space-y-1">
+            <li>Image cleaning</li>
+            <li>Dual PaddleOCR passes</li>
+            <li>Disagreement check + LLM verification</li>
+          </ul>
+        </div>
       )}
     </section>
   );

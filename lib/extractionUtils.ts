@@ -1,0 +1,114 @@
+export const SYSTEM_PROMPT =
+  "You are a transcription engine. Copy visible text from images exactly. Return plain text only. Do not explain, plan, summarize, or add steps.";
+
+export const EXTRACTION_PROMPT =
+  "Transcribe all visible Chinese text from this book page in natural reading order. Output only the transcribed text.";
+
+export const MAX_BASE64_IMAGE_BYTES = 4 * 1024 * 1024;
+const CJK_REGEX = /[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]/;
+
+export function getImageMimeType(imageBuffer: Buffer): string {
+  if (imageBuffer[0] === 0xff && imageBuffer[1] === 0xd8) {
+    return "image/jpeg";
+  }
+
+  if (
+    imageBuffer[0] === 0x89 &&
+    imageBuffer[1] === 0x50 &&
+    imageBuffer[2] === 0x4e &&
+    imageBuffer[3] === 0x47
+  ) {
+    return "image/png";
+  }
+
+  if (imageBuffer[0] === 0x47 && imageBuffer[1] === 0x49) {
+    return "image/gif";
+  }
+
+  if (
+    imageBuffer[0] === 0x52 &&
+    imageBuffer[1] === 0x49 &&
+    imageBuffer[2] === 0x46 &&
+    imageBuffer[3] === 0x46
+  ) {
+    return "image/webp";
+  }
+
+  return "image/jpeg";
+}
+
+function hasCjk(text: string): boolean {
+  return CJK_REGEX.test(text);
+}
+
+function stripInstructionPrefix(line: string): string {
+  const match = line.match(CJK_REGEX);
+
+  if (!match || match.index === undefined || match.index === 0) {
+    return line;
+  }
+
+  return line.slice(match.index).trim();
+}
+
+function isMetaLine(line: string): boolean {
+  const normalized = line.trim();
+
+  if (!normalized) {
+    return true;
+  }
+
+  if (hasCjk(normalized)) {
+    return false;
+  }
+
+  return (
+    /^(the user|i will|let me|here is|extracted text|transcription|rules:|step \d+)/i.test(
+      normalized
+    ) ||
+    /^\d+\.\s/.test(normalized) ||
+    /^\*\*.+\*\*:?\s*$/.test(normalized) ||
+    /^#{1,6}\s/.test(normalized) ||
+    /^- .*(preserve|vertical|horizontal|output)/i.test(normalized)
+  );
+}
+
+export function cleanExtractedText(raw: string): string {
+  let text = raw.trim();
+
+  text = text.replace(/[\s\S]*?<\/think>/gi, "").trim();
+  text = text.replace(/^```[\w-]*\n?/, "").replace(/\n?```$/, "").trim();
+
+  const lines = text
+    .split(/\r?\n/)
+    .map(stripInstructionPrefix)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .filter((line) => !isMetaLine(line));
+
+  const cjkLines = lines.filter((line) => hasCjk(line));
+
+  if (cjkLines.length > 0) {
+    return cjkLines.join("\n").trim();
+  }
+
+  return lines.join("\n").trim();
+}
+
+export function assertImageSize(imageBuffer: Buffer, providerLabel: string): void {
+  if (imageBuffer.length > MAX_BASE64_IMAGE_BYTES) {
+    throw new Error(
+      `Image is too large for ${providerLabel}. Please use an image under 4MB.`
+    );
+  }
+}
+
+export function toBase64Image(imageBuffer: Buffer): {
+  mimeType: string;
+  base64: string;
+} {
+  return {
+    mimeType: getImageMimeType(imageBuffer),
+    base64: imageBuffer.toString("base64"),
+  };
+}

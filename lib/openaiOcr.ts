@@ -1,4 +1,4 @@
-import Groq from "groq-sdk";
+import OpenAI from "openai";
 
 import {
   EXTRACTION_PROMPT,
@@ -8,28 +8,30 @@ import {
   toBase64Image,
 } from "@/lib/extractionUtils";
 
-const DEFAULT_MODEL = "qwen/qwen3.6-27b";
+const DEFAULT_MODEL = "gpt-4o-mini";
 
-let groqClient: Groq | null = null;
+let openaiClient: OpenAI | null = null;
 
-function getGroqClient(): Groq {
-  if (!process.env.GROQ_API_KEY) {
-    throw new Error("Groq API key is not configured. Add GROQ_API_KEY to .env.local.");
+function getOpenAiClient(): OpenAI {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OpenAI API key is not configured. Add OPENAI_API_KEY to .env.local.");
   }
 
-  if (!groqClient) {
-    groqClient = new Groq({ apiKey: process.env.GROQ_API_KEY });
+  if (!openaiClient) {
+    openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   }
 
-  return groqClient;
+  return openaiClient;
 }
 
-export async function extractTextWithGroq(imageBuffer: Buffer): Promise<string> {
-  assertImageSize(imageBuffer, "Groq");
+export async function extractTextWithOpenAI(
+  imageBuffer: Buffer
+): Promise<string> {
+  assertImageSize(imageBuffer, "OpenAI");
 
-  const client = getGroqClient();
+  const client = getOpenAiClient();
   const { mimeType, base64 } = toBase64Image(imageBuffer);
-  const model = process.env.GROQ_OCR_MODEL || DEFAULT_MODEL;
+  const model = process.env.OPENAI_OCR_MODEL || DEFAULT_MODEL;
 
   const response = await client.chat.completions.create({
     model,
@@ -46,9 +48,8 @@ export async function extractTextWithGroq(imageBuffer: Buffer): Promise<string> 
         ],
       },
     ],
-    max_completion_tokens: 8192,
+    max_tokens: 8192,
     temperature: 0,
-    reasoning_effort: "none",
   });
 
   return cleanExtractedText(response.choices[0]?.message?.content ?? "");
