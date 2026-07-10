@@ -11,6 +11,21 @@ function resolveCredentialsPath(credentialsPath: string): string {
     : path.join(process.cwd(), credentialsPath);
 }
 
+function loadCredentialsFromFile(credentialsPath: string) {
+  const resolvedPath = resolveCredentialsPath(credentialsPath);
+
+  if (!fs.existsSync(resolvedPath)) {
+    throw new Error(
+      `Google credentials file not found at ${resolvedPath}. Update GOOGLE_APPLICATION_CREDENTIALS in .env.local.`
+    );
+  }
+
+  return JSON.parse(fs.readFileSync(resolvedPath, "utf8")) as Record<
+    string,
+    unknown
+  >;
+}
+
 function getVisionClient(): ImageAnnotatorClient {
   if (visionClient) {
     return visionClient;
@@ -28,19 +43,14 @@ function getVisionClient(): ImageAnnotatorClient {
   const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
   if (credentialsPath) {
-    const resolvedPath = resolveCredentialsPath(credentialsPath);
-
-    if (!fs.existsSync(resolvedPath)) {
-      throw new Error(
-        `Google credentials file not found at ${resolvedPath}. Update GOOGLE_APPLICATION_CREDENTIALS in .env.local.`
-      );
-    }
-
-    process.env.GOOGLE_APPLICATION_CREDENTIALS = resolvedPath;
+    const credentials = loadCredentialsFromFile(credentialsPath);
+    visionClient = new ImageAnnotatorClient({ credentials });
+    return visionClient;
   }
 
-  visionClient = new ImageAnnotatorClient();
-  return visionClient;
+  throw new Error(
+    "Google Cloud credentials are not configured. Set GOOGLE_APPLICATION_CREDENTIALS in .env.local."
+  );
 }
 
 export async function extractTextWithGoogleVision(
