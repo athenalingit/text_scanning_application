@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const tabs = [
-  { href: "/", label: "Scan" },
-  { href: "/google-vision", label: "Google Vision" },
+  { href: "/", label: "Google Vision" },
+  { href: "/scan", label: "Scan" },
   { href: "/compare", label: "Compare" },
 ];
 
